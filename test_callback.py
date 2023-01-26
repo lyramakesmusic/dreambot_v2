@@ -64,7 +64,7 @@ async def dream(ctx, *prompt):
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(msg.edit(f'done', file=discord.File(filepath)))
-    loop.close()
+    # loop.close()
 
 print('online')
 bot.run(discord_token)
