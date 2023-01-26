@@ -5,6 +5,7 @@ import torch, diffusers, transformers
 import whisper, openai
 import colorthief, youtube_dl
 import requests, numpy, math, re, os, time, random
+from datetime import datetime
 
 from dotenv import load_dotenv
 from io import BytesIO
@@ -68,6 +69,7 @@ def callback(step, timestep, latents, msg, pipe, message):
 
         filepath = f'outputs/steps/{step}.png'
         image.save(filepath)
+
         nest_asyncio.apply()
         asyncio.get_event_loop().run_until_complete(msg.edit(f'{message}, step {step}', file=discord.File(filepath)))
 
@@ -92,6 +94,7 @@ async def dream(ctx, *prompt):
     global pipe
     prompt, kwargs = parse_prompt(prompt)
     kwargs = {
+        # 'n': int(kwargs['n']) if 'n' in kwargs else 1,
         'num_inference_steps': int(kwargs['steps']) if 'steps' in kwargs else 50,
         'guidance_scale': float(kwargs['scale']) if 'scale' in kwargs else 7.5,
         'height': int(kwargs['height']) if 'height' in kwargs else 512,
@@ -105,6 +108,7 @@ async def dream(ctx, *prompt):
         scheduler = diffusers.DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
         pipe = diffusers.StableDiffusionPipeline.from_pretrained(
             "./lyra-diffusion-v1-5",
+            # "./lyra_LoRA-v1-5",
             revision="fp16",
             torch_dtype=torch.float16,
             safety_checker=None,
@@ -143,6 +147,7 @@ async def dream(ctx, *prompt):
         await msg.edit(message_text, file=discord.File(filepath))
         
         og_prompt = ' '.join(prompt)
+        sanitized_authorname = re.sub(r'\W+', '', ctx.author.name)
         with open('history.txt', 'a') as f:
             f.write(f'\n{datetime.now().strftime("%m/%d/%y %H:%M:%S")}: "{og_prompt}" by {sanitized_authorname} ({i+1}/{n_images}) with seed {seed} and model {loaded_model} done in {elapsed_time}s at {filename}')
             f.close()
