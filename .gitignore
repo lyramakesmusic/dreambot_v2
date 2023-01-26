@@ -1,0 +1,6 @@
+.env
+stable-diffusion-v1-5/*
+lyra-diffusion-v1-5/*
+outputs/*
+lora/*
+history.txt
