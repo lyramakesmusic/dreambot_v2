@@ -31,6 +31,7 @@ def callback(step, timestep, latents, msg, pipe):
         print(f' {step}')
         nest_asyncio.apply()
         asyncio.get_event_loop().run_until_complete(msg.edit(f'step {step}', file=discord.File(filepath)))
+        asyncio.get_event_loop().close() # suggested by gpt3
         # asyncio.get_event_loop().wait_for(msg.edit(f'step {step}', file=discord.File(filepath)), timeout=5)
 
 @bot.command()
@@ -61,6 +62,7 @@ async def dream(ctx, *prompt):
 
         nest_asyncio.apply()
         asyncio.get_event_loop().run_until_complete(msg.edit(f'done', file=discord.File(filepath)))
+        asyncio.get_event_loop().close()
 
 print('online')
 bot.run(discord_token)
