@@ -1,4 +1,4 @@
-# simple-dreambot
+# dreambot_v2
 
 A discord interface for stable diffusion, gpt3, and other AI tools.
 
