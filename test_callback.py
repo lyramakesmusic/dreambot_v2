@@ -1,3 +1,8 @@
+
+# this works to interrupt generation to update a discord message with the WIP image.
+# KNOWN ISSUES:
+# after generating one image, entire program locks and will not respond to *anything*. 
+
 import discord
 from discord.ext import commands
 import torch, diffusers, transformers, torchvision
@@ -22,9 +27,11 @@ def callback(step, timestep, latents, msg, pipe):
 
         filepath = f'steps/{step}.png'
         image.save(filepath)
+        
+        print(f' {step}')
         nest_asyncio.apply()
-        # asyncio.get_event_loop().run_until_complete(msg.edit(f'step {step}', file=discord.File(filepath)))
-        asyncio.get_event_loop().wait_for(msg.edit(f'step {step}', file=discord.File(filepath)), timeout=5)
+        asyncio.get_event_loop().run_until_complete(msg.edit(f'step {step}', file=discord.File(filepath)))
+        # asyncio.get_event_loop().wait_for(msg.edit(f'step {step}', file=discord.File(filepath)), timeout=5)
 
 @bot.command()
 async def dream(ctx, *prompt):
