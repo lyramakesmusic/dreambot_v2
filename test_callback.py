@@ -51,8 +51,8 @@ async def dream(ctx, *prompt):
         filepath = "image.png"
         image.save(filepath)
         print('done')
+
         nest_asyncio.apply()
-        
         asyncio.get_event_loop().run_until_complete(msg.edit(f'done', file=discord.File(filepath)))
 
 print('online')
