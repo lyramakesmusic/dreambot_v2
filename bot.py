@@ -59,7 +59,7 @@ def restart_program():
     subprocess.Popen(run_string)
     exit(0)
 
-def callback(step, timestep, latents, msg, pipe, message):
+def callback(step, timestep, latents, msg, pipe, message, total_steps):
     with torch.no_grad():
         latents = 1 / 0.18215 * latents
         image = pipe.vae.decode(latents).sample
@@ -70,8 +70,8 @@ def callback(step, timestep, latents, msg, pipe, message):
         filepath = f'outputs/steps/{step}.png'
         image.save(filepath)
 
-        nest_asyncio.apply()
-        asyncio.get_event_loop().run_until_complete(msg.edit(f'{message}, step {step}', file=discord.File(filepath)))
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(msg.edit(f'{message}, step {step}/{total_steps}', file=discord.File(filepath)))
 
 # init pycord
 intents = discord.Intents.all()
@@ -85,6 +85,7 @@ openai.api_key = os.getenv('OPENAI_TOKEN')
 
 # global variables
 pipe = None
+nest_asyncio.apply()
 
 random.seed(time.time())
 print('started')
@@ -93,6 +94,7 @@ print('started')
 async def dream(ctx, *prompt):
     global pipe
     prompt, kwargs = parse_prompt(prompt)
+    n_images = int(kwargs['n']) if 'n' in kwargs else 1
     kwargs = {
         # 'n': int(kwargs['n']) if 'n' in kwargs else 1,
         'num_inference_steps': int(kwargs['steps']) if 'steps' in kwargs else 50,
@@ -107,7 +109,7 @@ async def dream(ctx, *prompt):
     if not isinstance(pipe, diffusers.StableDiffusionPipeline):
         scheduler = diffusers.DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
         pipe = diffusers.StableDiffusionPipeline.from_pretrained(
-            "./lyra-diffusion-v1-5",
+            "./stable-diffusion-v1-5",
             # "./lyra_LoRA-v1-5",
             revision="fp16",
             torch_dtype=torch.float16,
@@ -119,7 +121,6 @@ async def dream(ctx, *prompt):
             pipe.unet.load_attn_procs(f"lora/{kwargs['lora']}")
     
     # generate n images
-    n_images = int(kwargs['n']) if 'n' in kwargs else 1
     for i in range(n_images):
         # random seed
         seed = int(kwargs['seed']) if 'seed' in kwargs else random.randrange(0, 2**32)
@@ -130,11 +131,11 @@ async def dream(ctx, *prompt):
         start_time = time.time()
         
         # actually generate
-        contextual_callback = functools.partial(callback, msg=msg, pipe=pipe, message=message_text)
+        contextual_callback = functools.partial(callback, msg=msg, pipe=pipe, message=message_text, total_steps=kwargs['num_inference_steps'])
         with torch.autocast("cuda"), torch.inference_mode():
             image = pipe(prompt,
-            # callback=contextual_callback,
-            # callback_steps=10,
+            callback=contextual_callback,
+            callback_steps=10,
             **kwargs).images[0]
         
         # save and send result
@@ -144,12 +145,13 @@ async def dream(ctx, *prompt):
 
         # nest_asyncio.apply()
         # asyncio.get_event_loop().run_until_complete(msg.edit(f'{message_text}', file=discord.File(filepath)))
-        await msg.edit(message_text, file=discord.File(filepath))
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(msg.edit(message_text, file=discord.File(filepath)))
         
         og_prompt = ' '.join(prompt)
         sanitized_authorname = re.sub(r'\W+', '', ctx.author.name)
         with open('history.txt', 'a') as f:
-            f.write(f'\n{datetime.now().strftime("%m/%d/%y %H:%M:%S")}: "{og_prompt}" by {sanitized_authorname} ({i+1}/{n_images}) with seed {seed} and model {loaded_model} done in {elapsed_time}s at {filename}')
+            f.write(f'\n{datetime.now().strftime("%m/%d/%y %H:%M:%S")}: "{og_prompt}" by {sanitized_authorname} ({i+1}/{n_images}) with seed {seed} done in {elapsed_time}s at {filepath}')
             f.close()
 
 @bot.command()
