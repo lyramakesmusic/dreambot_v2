@@ -1,8 +1,4 @@
 
-# this works to interrupt generation to update a discord message with the WIP image.
-# KNOWN ISSUES:
-# after generating one image, entire program locks and will not respond to *anything*. 
-
 import discord
 from discord.ext import commands
 import torch, diffusers, transformers, torchvision
