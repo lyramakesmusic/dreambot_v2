@@ -14,6 +14,9 @@ from PIL import Image, ImageOps
 import asyncio, functools
 import nest_asyncio
 
+from bs4 import BeautifulSoup
+from bs4.element import Comment
+
 def parse_prompt(prompt):
     arg_words = [t for t in prompt if '=' in t]
     kwargs = dict(t.split('=') for t in arg_words) if arg_words is not [] else {}
@@ -82,10 +85,14 @@ bot = commands.Bot(command_prefix="-", intents=intents)
 load_dotenv()
 discord_token = os.getenv('DISCORD_TOKEN')
 openai.api_key = os.getenv('OPENAI_TOKEN')
+elevenlabs_token = os.getenv('ELEVENLABS_TOKEN')
 
 # global variables
 pipe = None
 nest_asyncio.apply()
+
+chatgpt_user_histories = {}
+user_system_msgs = {}
 
 random.seed(time.time())
 print('started')
@@ -155,38 +162,125 @@ async def dream(ctx, *prompt):
             f.close()
 
 @bot.command()
-async def edit(ctx, *prompt):
-    global pipe
+async def gpt(ctx, *prompt):
+    prompt = " ".join(prompt)
+    response = openai.Completion.create(
+        model='text-davinci-003',
+        prompt=prompt,
+        temperature=temp,
+        max_tokens=tokens
+    )
+    await ctx.send(response.choices[0].text)
+
+@bot.command()
+async def sys(ctx, *prompt):
+    global user_system_msgs
+    prompt = " ".join(prompt)
+    sanitized_authorname = re.sub(r'\W+', '', ctx.author.name)
+    user_system_msgs[sanitized_authorname] = prompt
+    chatgpt_user_histories.pop(sanitized_authorname, None)
+    await ctx.send(f'updated {sanitized_authorname}\'s default chatgpt command to `{prompt}`')
+    print(f'The user system prompts are ```{user_system_msgs}```')
+
+@bot.command()
+async def search(ctx, *prompt):
     prompt, kwargs = parse_prompt(prompt)
-    kwargs = {
-        'num_inference_steps': int(kwargs['steps']) if 'steps' in kwargs else 50,
-        'guidance_scale': float(kwargs['scale']) if 'scale' in kwargs else 7.5,
-        'image_guidance_scale': float(kwargs['scale']) if 'scale' in kwargs else 1.5,
-        'height': int(kwargs['height']) if 'height' in kwargs else 512,
-        'width': int(kwargs['width']) if 'width' in kwargs else 512,
-        'negative_prompt': kwargs['negative_prompt'] if 'negative_prompt' in kwargs else ''
-    }
-    negative_prompt = kwargs['negative_prompt']
 
-    # initialize model
-    if not isinstance(pipe, diffusers.StableDiffusionInstructPix2PixPipeline):
-        scheduler = diffusers.DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
-        pipe = diffusers.StableDiffusionInstructPix2PixPipeline.from_pretrained("timbrooks/instruct-pix2pix", revision="fp16", torch_dtype=torch.float16, safety_checker=None, scheduler=scheduler).to("cuda")
+    # google the term
+    url = f"https://www.google.com/search?q={prompt}&num=1"
+    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"})
+    soup = BeautifulSoup(response.text, "html.parser")
 
-    # get init image
-    # todo: parse url in prompt
-    if len(ctx.message.attachments) == 0:
-        await ctx.send(f'please upload an image to edit')
+    def tag_visible(element):
+        if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+            return False
+        if isinstance(element, Comment):
+            return False
+        return True
+
+    texts = soup.findAll(string=True)
+    visible_texts = filter(tag_visible, texts)  
+    result = u" ".join(t.strip() for t in visible_texts)[:].split('Search Results')[1].split('More results Try again')[0]
+
+    print(result)
+    
+    system_msg = f'You are a search-enabled AI, with access to realtime information. Knowledge cutoff: 3/2/23. Make sure to give all relevant information from the search results. Be specific, don\'t just give an overview.'
+
+    prompt = f'Here are the current google search results for `{prompt}`:\n{result}. Answer the prompt with the information given. Make sure to include all numbers and details. Don\'t include related searches.'
+    
+    try:
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo", 
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.5,
+        )
+    except Exception as e:
+        await ctx.send(str(e))
         return
-    image_to_edit = PIL_from_url(ctx.message.attachments[0].url)
-    
-    # do the edit
-    with torch.autocast("cuda"), torch.inference_mode():
-        edited_image = pipe(prompt, image=image_to_edit, num_inference_steps=kwargs['steps'], image_guidance_scale=1.5, guidance_scale=7).images[0]
-    
-    # save and send result
-    filename = save_img(image, 'outputs')
-    elapsed_time = int(time.time() - start_time)
-    await ctx.send(f"edited image: \"{prompt}{'' if negative_prompt == '' else f'[{negative_prompt}]'}\" by {ctx.author.mention} in {elapsed_time}s with seed {seed}", file=discord.File(filename))
-        
+
+    await ctx.send(completion.choices[0]['message']['content'].strip()[:2000])
+
+@bot.command()
+async def chat(ctx, *prompt):
+    global chatgpt_user_histories
+    prompt, kwargs = parse_prompt(prompt)
+    temp = float(kwargs['temp']) if 'temp' in kwargs else 1.0
+
+    # handle user history
+    sanitized_authorname = re.sub(r'\W+', '', ctx.author.name)
+    if prompt == "clear":
+        chatgpt_user_histories.pop(sanitized_authorname, None)
+        print(f'{sanitized_authorname} cleared history')
+        await ctx.send("Chat history cleared.")
+        return
+
+    # system_msg = "Knowledge cutoff: 10000 bc. You are a caveman. You can only use short words and extremely simple sentences. Use caveman grammar."
+    system_msg = "You are an expert assistant with a perfect track record of answering questions and providing information clearly and concisely."
+    if sanitized_authorname in user_system_msgs:
+        system_msg = user_system_msgs[sanitized_authorname]
+
+    print(f'{system_msg}')
+
+    print(f'{sanitized_authorname} -> chatgpt: {prompt}')
+    if sanitized_authorname not in chatgpt_user_histories:
+        chatgpt_user_histories[sanitized_authorname] = [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt}
+        ]
+    else:
+        chatgpt_user_histories[sanitized_authorname].append({"role": "user", "content": prompt})
+    user_history = chatgpt_user_histories[sanitized_authorname]
+
+    # call API
+    try:
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo", 
+            messages=user_history,
+            temperature=temp,
+        )
+    except Exception as e:
+        await ctx.send(str(e))
+        return
+    response = completion.choices[0]['message']['content'].strip()[:2000]
+    print(f'chatgpt -> {sanitized_authorname}: {response}')
+    user_history.append({"role": "assistant", "content": response})
+    chatgpt_user_histories[sanitized_authorname] = user_history
+    try:
+        await ctx.send(response)
+    except Exception as e:
+        await ctx.send(str(e))
+
+# @bot.command()
+# async def list_voices(ctx):
+#     headers = {
+#         'Accept': 'application/json',
+#         'xi-api-key': elevenlabs_token
+#     }
+#     response = requests.get('https://api.elevenlabs.io/v1/voices', headers=headers)
+#     print(response.json())
+#     await ctx.send(f'```json {response.json()}```')
+
 bot.run(discord_token)
