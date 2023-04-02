@@ -118,6 +118,18 @@ async def dream(ctx, *, prompt: str, args=None):
         msg_text = f"\"{prompt}\" by {ctx.author.mention} in {int(time.time() - start_time)}s with seed {args.seed} ({i+1}/{args.n})"
         loop = asyncio.get_event_loop()
         loop.run_until_complete(msg.edit(msg_text, file=discord.File(filepath)))
+        
+@bot.command()
+async def readme(ctx):
+    try:
+        with open('README.md', 'r') as file:
+            content = file.read()
+    except FileNotFoundError:
+        await ctx.send("README.md not found.")
+        return
+
+    for i in range(0, len(content), 2000):
+        await ctx.send(f"{content[i:i+2000]}")
 
 print('online!')
 bot.run(discord_token)
