@@ -15,8 +15,8 @@ dreambot is a simple discord bot that uses stable diffusion to generate images b
 
 1. Clone this repository: `git clone https://github.com/lyramakesmusic/dreambot_v2.git`
 2. Install the required packages with `pip install`.
-3. Create a `.env` file and add your `DISCORD_TOKEN` and `OPENAI_TOKEN`.
-4. Download the stable diffusion 1.5 [model weights](https://huggingface.co/runwayml/stable-diffusion-v1-5/tree/main).
+3. Download the stable diffusion 1.5 [model weights](https://huggingface.co/runwayml/stable-diffusion-v1-5/tree/main).
+4. Create a `.env` file and add your `DISCORD_TOKEN` and `OPENAI_TOKEN`.
 
 ## Usage
 
