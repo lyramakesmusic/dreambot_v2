@@ -1,6 +1,6 @@
-# DreamBot
+# dreambot_v2
 
-DreamBot is a simple Discord bot that uses Stable Diffusion to generate images based on a given prompt. It also supports chat functionalities using GPT-4.
+dreambot is a simple discord bot that uses stable diffusion to generate images based on a given prompt. It also supports chat functionalities using GPT-4.
 
 ## Features
 - Generate images based on user prompts
@@ -33,7 +33,7 @@ Run the bot with `python bot.py`.
 - `--n`: Number of images to create (default: 1)
 - `--scale`: Guidance scale (default: 7.5)
 - `--steps`: Number of generation steps (default: 50)
-- `--ar`: Aspect ratio (default: "1:1")
+- `--ar`: Aspect ratio (default: "1:1"). It will auto-crop so width and height are multiples of 64, without going above 300,000 total pixels.
 - `--seed`: Seed for random number generator (default: 0)
 - `--no`: Negative prompt (default: ""). Note: everything after --no is parsed as the negative prompt, so make sure it's the last argument in the list.
 
