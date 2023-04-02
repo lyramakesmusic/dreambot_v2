@@ -68,6 +68,16 @@ async def chat(ctx, *, prompt: str, args=None):
     await ctx.send(chats[user].call(prompt))
 
 @bot.command()
+async def stream(ctx, *, prompt: str):
+    user = re.sub(r'\W+', '', ctx.author.name)
+    chats.setdefault(user, gpt4(openai_api_key))
+    msg = await ctx.send("Processing...")
+    text = ""
+    for chunk in chats[user].stream(prompt):
+        text += chunk
+        await msg.edit(content=text)
+
+@bot.command()
 async def sys(ctx, *, sys_prompt: str):
     user = re.sub(r'\W+', '', ctx.author.name)
     chats.setdefault(user, gpt4(openai_api_key, sys=sys_prompt)).sys = sys_prompt
