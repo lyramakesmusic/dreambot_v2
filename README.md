@@ -13,7 +13,7 @@ dreambot is a simple discord bot that uses stable diffusion to generate images b
 
 ## Installation
 
-1. Clone this repository.
+1. Clone this repository: `git clone https://github.com/lyramakesmusic/dreambot_v2.git`
 2. Install the required packages with `pip install`.
 3. Create a `.env` file and add your `DISCORD_TOKEN` and `OPENAI_TOKEN`.
 
