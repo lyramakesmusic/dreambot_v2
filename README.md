@@ -41,7 +41,10 @@ Run the bot with `python bot.py`.
 
 ```
 -dream A beautiful sunset over the mountains, hd photography --ar 16:9 --steps 100 --scale 10 --no washed out, low contrast
-
+```
+```
 -chat How do I boil an egg?
+```
+```
 -stream List 10 ingredients for a stir fry:
 ```
