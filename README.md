@@ -4,9 +4,7 @@ DreamBot is a simple Discord bot that uses Stable Diffusion to generate images b
 
 ## Features
 - Generate images based on user prompts
-- Chat with the bot using GPT-4
-- Stream responses from GPT-4
-- Set a system prompt for GPT-4
+- Chat with GPT-4
 
 ## Requirements
 - [diffusers](https://github.com/huggingface/diffusers) - This will force you to install most of the other requirements.
