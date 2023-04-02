@@ -27,6 +27,7 @@ Run the bot with `python bot.py`.
 - `-stream <prompt>`: Stream responses from GPT-4.
 - `-sys <sys_prompt>`: Set a system prompt for GPT-4.
 - `-dream <prompt> [args]`: Generate an image based on the given prompt.
+- `-readme`: Display the bot's README.md content.
 
 #### Dream command arguments
 
@@ -40,11 +41,11 @@ Run the bot with `python bot.py`.
 ## Examples
 
 ```
+-readme
+
 -dream A beautiful sunset over the mountains, hd photography --ar 16:9 --steps 100 --scale 10 --no washed out, low contrast
-```
-```
+
 -chat How do I boil an egg?
-```
-```
+
 -stream List 10 ingredients for a stir fry:
 ```
